@@ -1,4 +1,4 @@
-# DBFace TFJS Port
+# DBFace: Face Detection for TFJS and NodeJS
 
 **DBFace-MobileNetV3** model converted from **PyTorch** to **TFJS Graph Model**  
 With native decode bounds and NMS functions in `TypeScript` to process results
