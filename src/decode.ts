@@ -2,18 +2,20 @@ import type { Tensor, Region } from './types';
 
 export const regionLandmarks = ['eyeRight', 'eyeLeft', 'nose', 'mouthRight', 'mouthLeft'];
 
-const exp = (v: number): number => {
+export const exp = (v: number): number => {
   if (Math.abs(v) < 1.0) return v * Math.E;
   if (v > 0.0) return Math.exp(v);
   return -Math.exp(-v);
 };
 
+export const sigmoid = (v: number) => 1 / (1 + Math.exp(-v));
+
 export async function boxes(logits: Array<Tensor>, minScore: number): Promise<Region[]> {
-  const boxRaw = await logits[0].data();
-  const scoreRaw = await logits[1].data();
-  const landmarkRaw = await logits[2].data();
-  const strideX = logits[1].shape[2] as number;
-  const strideY = logits[1].shape[1] as number;
+  const boxRaw = await (logits.find((logit) => logit.shape[3] === 4) as Tensor).data();
+  const scoreRaw = await (logits.find((logit) => logit.shape[3] === 1) as Tensor).data();
+  const landmarkRaw = await (logits.find((logit) => logit.shape[3] === 10) as Tensor).data();
+  const strideX = (logits.find((logit) => logit.shape[3] === 1) as Tensor).shape[2] as number;
+  const strideY = (logits.find((logit) => logit.shape[3] === 1) as Tensor).shape[1] as number;
   const regions: Region[] = [];
   for (let y = 0; y < strideY; y++) {
     for (let x = 0; x < strideX; x++) {

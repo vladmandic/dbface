@@ -4,6 +4,7 @@
   "description": "DBFace: Face Detection for TFJS and NodeJS",
   "main": "dist/dbface.js",
   "scripts": {
+    "build": "build --profile production",
     "start": "build --profile production && node dist/dbface.js"
   },
   "author": "Vladimir Mandic <mandic00@live.com>",
@@ -13,6 +14,7 @@
     "@vladmandic/build": "^0.6.6",
     "@vladmandic/pilogger": "^0.4.2",
     "canvas": "^2.8.0",
+    "commander": "^8.3.0",
     "eslint": "^8.4.1",
     "eslint-config-airbnb-base": "^15.0.0",
     "eslint-plugin-import": "^2.25.3",

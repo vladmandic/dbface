@@ -1,66 +1,56 @@
 # DBFace: Face Detection for TFJS and NodeJS
 
-**DBFace-MobileNetV3** model converted from **PyTorch** to **TFJS Graph Model**  
-With native decode bounds and NMS functions in `TypeScript` to process results
+**DBFace** models converted from **PyTorch** to **TFJS Graph Model**  
+With native decode bounds and NMS functions in `TypeScript` to process results  
 
+Compatible with 
+- Browser (using `tfjs-wasm`, `tfjs-webgl` or `tfjs-webgpu` backends)
+- NodeJS (using `tfjs-node` or `tfjs-node-gpu` modules)
+
+Includes **16 variations** of **DBFace** models:
+- **MobileNetv2** and **MobileNetv3** variations
+- **Float32** and quantized **Float16** variations  
+- Trained on multiple resolutions: **320x320**, **640x480**, **960x640** and **1280x800**
+
+Examples of outputs of all model variations are included in [media folder](https://github.com/vladmandic/dbface/tree/main/media/out)
+
+<br>
 ## Run
 
-> npm start
+> npm start -- --model models/mb3-f32-800-1280/dbface.json --input media/in/models.jpg --output media/out/models-mb3-f32-800x1200.jpg
 
 ```js
 { application: 'dbface', version: '0.0.1' }
-{ user: 'vlado', platform: 'linux', arch: 'x64', node: 'v17.2.0' }
-{ tensorflow: '3.12.0', backend: 'tensorflow', gpuEnabled: true, gpuActive: true }
-{ model: { modelPath: 'file://./model/dbface.json', minScore: 0.2, iouThreshold: 0.1, maxResults: 1000, inputSize: [ 640, 480 ], bytes: 7124128, tensors: 299 } }
-{ input: './media/in/models.jpg', bytes: 24602400, resolution: [ 3600, 2278 ], tensor: [ 1, 480, 640, 3 ], type: 'float32' }
-2021-12-18 09:49:29 DATA:  {
-  results: 25,
-  scores: [
-    68.6, 68.5, 68.2, 67.8, 66.8,
-    66.7, 66.6, 66.5, 66.3, 65.9,
-    64.6, 63.8, 63.2, 62.6, 62.4,
-    61.4, 61.0, 60.4, 60.0, 59.9,
-    59.6, 59.1, 56.7, 56.1, 55.4
-  ]
+{
+  options: {
+    inImage: 'media/in/models.jpg',
+    outImage: 'media/out/models-mb3-f32-800x1200.jpg',
+    modelPath: 'file://models/mb3-f32-800-1280/dbface.json',
+    minScore: 0.2,
+    iouThreshold: 0.1,
+    maxResults: 1000,
+    inputSize: [ 0, 0 ]
+  }
 }
-2021-12-18 09:49:29 STATE: { output: './media/out/models.jpg', resolution: [ 3600, 2278 ] }
+{ tensorflow: '3.12.0', backend: 'tensorflow', gpuEnabled: true, gpuActive: true }
+{ memory: { bytes: 7123912, tensors: 252 } }
+{ input: 'media/in/models.jpg', bytes: 24602400, resolution: [ 3600, 2278 ], tensor: [ 1, 800, 1280, 3 ], type: 'float32' }
+{ predictTime: 155, processTime: 2, results: 538, nms: 25 }
+{ scores: [
+    0.82, 0.81, 0.81,  0.8,  0.8,
+     0.8,  0.8,  0.8, 0.79, 0.79,
+    0.79, 0.79, 0.78, 0.78, 0.78,
+    0.78, 0.78, 0.77, 0.77, 0.77,
+    0.75, 0.75, 0.73, 0.72, 0.68
+  ] }
+{ output: 'media/out/models-mb3-f32-800x1200.jpg', resolution: [ 3600, 2278 ] }
 ```
 
 ## Example
 
-![Example Image](media/out/models.jpg)
+![Example Image](media/out/models-mb3-f32-800x1280.jpg)
 
-## Model Signature
-
-```js
-INFO:  graph model: dbface/model/dbface.json
-INFO:  created on: 2021-12-17T14:46:10.793Z
-INFO:  metadata: { generatedBy: 'https://github.com/dlunion/DBFace', convertedBy: 'https://github.com/vladmandic' }
-INFO:  model inputs based on signature
-{ name: 'input:0', dtype: 'DT_FLOAT', shape: [ 1, 480, 640, 3 ] }
-INFO:  model outputs based on signature
-{ id: 0, name: 'Identity_1:0', dytpe: 'DT_FLOAT', shape: [ 1, 120, 160, 4 ] }
-{ id: 1, name: 'Identity_2:0', dytpe: 'DT_FLOAT', shape: [ 1, 120, 160, 1 ] }
-{ id: 2, name: 'Identity:0', dytpe: 'DT_FLOAT', shape: [ 1, 120, 160, 10 ] }
-INFO:  tensors: 299
-DATA:  weights: {
-  files: [ 'dbface.bin' ],
-  size: { disk: 7124128, memory: 7124128 },
-  count: { total: 299, float32: 242, int32: 57 },
-  quantized: { none: 299 },
-  values: { total: 1781032, float32: 1780785, int32: 247 }
-}
-DATA:  kernel ops: {
-  graph: [ 'Const', 'Placeholder', 'Identity' ],
-  transformation: [ 'Pad', 'ExpandDims' ],
-  convolution: [ '_FusedConv2D', 'FusedDepthwiseConv2dNative' ],
-  arithmetic: [ 'AddV2', 'Mul', 'Add' ],
-  basic_math: [ 'Relu6', 'Sigmoid', 'Exp' ],
-  reduction: [ 'Mean' ],
-  image: [ 'ResizeNearestNeighbor' ],
-  slice_join: [ 'StridedSlice', 'ConcatV2' ]
-}
-```
+<br>
 
 ## Credit
 

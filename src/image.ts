@@ -28,7 +28,7 @@ export async function save(img: Image, target: string, regions: Region[]) {
   const out: fs.WriteStream = fs.createWriteStream(target);
   out.on('finish', () => log.state({ output: target, resolution: [c.width, c.height] }));
   out.on('error', (err) => log.error({ output: target, error: err }));
-  const stream: canvas.JPEGStream = c.createJPEGStream({ quality: 0.75, progressive: true, chromaSubsampling: true });
+  const stream: canvas.JPEGStream = c.createJPEGStream({ quality: 0.60, progressive: true, chromaSubsampling: true });
   stream.pipe(out);
 }
 
@@ -36,10 +36,9 @@ export async function load(fileName: string, inputSize: [number, number]): Promi
   const data: Buffer = fs.readFileSync(fileName);
   const decoded: Tensor = tf.node.decodeImage(data);
   const resize: Tensor = tf.image.resizeBilinear(decoded as tf.Tensor3D, [inputSize[1], inputSize[0]]);
-  const norm: Tensor = tf.div(resize, 255);
-  const tensor: Tensor = tf.expandDims(norm, 0);
+  const tensor: Tensor = tf.expandDims(resize, 0);
   const img = { fileName, tensor, inputShape: [decoded.shape[1], decoded.shape[0]] as [number, number], outputShape: tensor.shape, bytes: decoded.size, dtype: tensor.dtype };
-  tf.dispose([decoded, resize, norm]);
+  tf.dispose([decoded, resize]);
   log.state({ input: img.fileName, bytes: img.bytes, resolution: img.inputShape, tensor: img.outputShape, type: img.dtype });
   return img;
 }
