@@ -16,17 +16,22 @@ const modelOptions = {
 };
 
 async function main() {
-  await tf.ready();
   log.headerJson();
-  log.info({ tensorflow: tf.version['tfjs-node'] });
-  const model: tf.GraphModel = await tf.loadGraphModel(modelOptions.modelPath);
-  // modelOptions.inputSize = [Object.values(model.modelSignature.inputs)[0].tensorShape.dim[2].size, Object.values(model.modelSignature.inputs)[0].tensorShape.dim[1].size]; // use to autodetect inputSize
+  // process.env.CUDA_VISIBLE_DEVICES = '-1';
+  // process.env.TF_CPP_MIN_LOG_LEVEL = '2';
+  tf.setBackend('tensorflow');
+  await tf.ready();
+  // @ts-ignore backendInstance is private
+  log.data({ tensorflow: tf.version['tfjs-node'], backend: tf.getBackend(), gpuEnabled: tf.engine().backendInstance.isGPUPackage, gpuActive: tf.engine().backendInstance.isUsingGpuDevice });
+  const model: tf.GraphModel = await tf.loadGraphModel(modelOptions.modelPath); // load model
+  log.data({ model: { ...modelOptions, bytes: tf.engine().memory().numBytes, tensors: tf.engine().memory().numTensors } });
   log.data({ input: inImage, output: outImage });
-  log.data({ modelOptions });
-  const img: Image = await image.load(inImage, modelOptions.inputSize as [number, number]);
-  const logits: Tensor[] = await model.predict(img.tensor) as Tensor[];
-  const regions: Region[] = await decode.boxes(logits, modelOptions.minScore);
-  const nms: Region[] = await decode.nms(regions, modelOptions.iouThreshold, modelOptions.maxResults);
+  // modelOptions.inputSize = [Object.values(model.modelSignature.inputs)[0].tensorShape.dim[2].size, Object.values(model.modelSignature.inputs)[0].tensorShape.dim[1].size]; // use to autodetect inputSize
+  const img: Image = await image.load(inImage, modelOptions.inputSize as [number, number]); // load image
+  const logits: Tensor[] = await model.predict(img.tensor) as Tensor[]; // run model
+  const regions: Region[] = await decode.boxes(logits, modelOptions.minScore); // decode results
+  const nms: Region[] = await decode.nms(regions, modelOptions.iouThreshold, modelOptions.maxResults); // run nms on results
+  logits.forEach((tensor) => tf.dispose(tensor)); // dispose model results
   log.data({ results: nms.length, scores: nms.map((region) => Math.round(1000 * region.score) / 10) });
   await image.save(img, outImage, nms);
 }

@@ -38,8 +38,8 @@ export async function load(fileName: string, inputSize: [number, number]): Promi
   const resize: Tensor = tf.image.resizeBilinear(decoded as tf.Tensor3D, [inputSize[1], inputSize[0]]);
   const norm: Tensor = tf.div(resize, 255);
   const tensor: Tensor = tf.expandDims(norm, 0);
-  const img = { fileName, tensor, inputShape: [decoded.shape[1], decoded.shape[0]] as [number, number], outputShape: tensor.shape, size: decoded.size, dtype: tensor.dtype };
+  const img = { fileName, tensor, inputShape: [decoded.shape[1], decoded.shape[0]] as [number, number], outputShape: tensor.shape, bytes: decoded.size, dtype: tensor.dtype };
   tf.dispose([decoded, resize, norm]);
-  log.state({ input: img.fileName, size: img.size, resolution: img.inputShape, tensor: img.outputShape, type: img.dtype });
+  log.state({ input: img.fileName, bytes: img.bytes, resolution: img.inputShape, tensor: img.outputShape, type: img.dtype });
   return img;
 }

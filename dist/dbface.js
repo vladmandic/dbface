@@ -64,57 +64,48 @@ async function load(fileName, inputSize) {
   const resize = tf.image.resizeBilinear(decoded, [inputSize[1], inputSize[0]]);
   const norm = tf.div(resize, 255);
   const tensor = tf.expandDims(norm, 0);
-  const img = { fileName, tensor, inputShape: [decoded.shape[1], decoded.shape[0]], outputShape: tensor.shape, size: decoded.size, dtype: tensor.dtype };
+  const img = { fileName, tensor, inputShape: [decoded.shape[1], decoded.shape[0]], outputShape: tensor.shape, bytes: decoded.size, dtype: tensor.dtype };
   tf.dispose([decoded, resize, norm]);
-  log.state({ input: img.fileName, size: img.size, resolution: img.inputShape, tensor: img.outputShape, type: img.dtype });
+  log.state({ input: img.fileName, bytes: img.bytes, resolution: img.inputShape, tensor: img.outputShape, type: img.dtype });
   return img;
 }
 
 // src/decode.ts
 var regionLandmarks = ["eyeRight", "eyeLeft", "nose", "mouthRight", "mouthLeft"];
-function exp(v) {
+var exp = (v) => {
   if (Math.abs(v) < 1)
     return v * Math.E;
   if (v > 0)
     return Math.exp(v);
   return -Math.exp(-v);
-}
+};
 async function boxes(logits, minScore) {
-  const bboxPtr = await logits[0].data();
-  const scoresPtr = await logits[1].data();
-  const landmarkPtr = await logits[2].data();
-  const scoreW = logits[1].shape[2];
-  const scoreH = logits[1].shape[1];
+  const boxRaw = await logits[0].data();
+  const scoreRaw = await logits[1].data();
+  const landmarkRaw = await logits[2].data();
+  const strideX = logits[1].shape[2];
+  const strideY = logits[1].shape[1];
   const regions = [];
-  for (let y = 0; y < scoreH; y++) {
-    for (let x = 0; x < scoreW; x++) {
-      const idx = y * scoreW + x;
-      const score = scoresPtr[idx];
+  for (let y = 0; y < strideY; y++) {
+    for (let x = 0; x < strideX; x++) {
+      const idx = y * strideX + x;
+      const score = scoreRaw[idx];
       if (score < minScore)
         continue;
-      const bx = bboxPtr[4 * idx + 0];
-      const by = bboxPtr[4 * idx + 1];
-      const bw = bboxPtr[4 * idx + 2];
-      const bh = bboxPtr[4 * idx + 3];
-      const x0 = (x - bx) / scoreW;
-      const y0 = (y - by) / scoreH;
-      const x1 = (x + bw) / scoreW;
-      const y1 = (y + bh) / scoreH;
+      const x0 = (x - boxRaw[4 * idx + 0]) / strideX;
+      const y0 = (y - boxRaw[4 * idx + 1]) / strideY;
+      const x1 = (x + boxRaw[4 * idx + 2]) / strideX;
+      const y1 = (y + boxRaw[4 * idx + 3]) / strideY;
       const landmarks = {};
       for (let i = 0; i < regionLandmarks.length; i++) {
         const lmidx = 2 * regionLandmarks.length * idx + i;
-        let lx = landmarkPtr[lmidx] * 4;
-        let ly = landmarkPtr[lmidx + regionLandmarks.length] * 4;
-        lx = (exp(lx) + x) / scoreW;
-        ly = (exp(ly) + y) / scoreH;
+        let lx = landmarkRaw[lmidx] * 4;
+        let ly = landmarkRaw[lmidx + regionLandmarks.length] * 4;
+        lx = (exp(lx) + x) / strideX;
+        ly = (exp(ly) + y) / strideY;
         landmarks[regionLandmarks[i]] = [lx, ly];
       }
-      const region = {
-        box: [x0, y0, x1 - x0, y1 - y0],
-        score,
-        landmarks
-      };
-      regions.push(region);
+      regions.push({ box: [x0, y0, x1 - x0, y1 - y0], score, landmarks });
     }
   }
   return regions;
@@ -174,16 +165,18 @@ var modelOptions = {
   inputSize: [640, 480]
 };
 async function main() {
-  await tf2.ready();
   log2.headerJson();
-  log2.info({ tensorflow: tf2.version["tfjs-node"] });
+  tf2.setBackend("tensorflow");
+  await tf2.ready();
+  log2.data({ tensorflow: tf2.version["tfjs-node"], backend: tf2.getBackend(), gpuEnabled: tf2.engine().backendInstance.isGPUPackage, gpuActive: tf2.engine().backendInstance.isUsingGpuDevice });
   const model = await tf2.loadGraphModel(modelOptions.modelPath);
+  log2.data({ model: { ...modelOptions, bytes: tf2.engine().memory().numBytes, tensors: tf2.engine().memory().numTensors } });
   log2.data({ input: inImage, output: outImage });
-  log2.data({ modelOptions });
   const img = await load(inImage, modelOptions.inputSize);
   const logits = await model.predict(img.tensor);
   const regions = await boxes(logits, modelOptions.minScore);
   const nms2 = await nms(regions, modelOptions.iouThreshold, modelOptions.maxResults);
+  logits.forEach((tensor) => tf2.dispose(tensor));
   log2.data({ results: nms2.length, scores: nms2.map((region) => Math.round(1e3 * region.score) / 10) });
   await save(img, outImage, nms2);
 }
