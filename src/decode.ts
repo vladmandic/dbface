@@ -1,12 +1,14 @@
 import type { Tensor, Region } from './types';
 
+export const regionLandmarks = ['eyeRight', 'eyeLeft', 'nose', 'mouthRight', 'mouthLeft'];
+
 export function exp(v: number): number {
   if (Math.abs(v) < 1.0) return v * Math.E; // Math.exp(1.0);
   if (v > 0.0) return Math.exp(v);
   return -Math.exp(-v);
 }
 
-export async function boxes(logits: Array<Tensor>, minScore: number, regionLandmarks: string[]): Promise<Region[]> {
+export async function boxes(logits: Array<Tensor>, minScore: number): Promise<Region[]> {
   const bboxPtr = await logits[0].data();
   const scoresPtr = await logits[1].data();
   const landmarkPtr = await logits[2].data();

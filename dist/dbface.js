@@ -60,17 +60,18 @@ async function save(img, target, regions) {
 }
 async function load(fileName, inputSize) {
   const data2 = fs.readFileSync(fileName);
-  const buffer = tf.node.decodeImage(data2);
-  const resize = tf.image.resizeBilinear(buffer, [inputSize[1], inputSize[0]]);
+  const decoded = tf.node.decodeImage(data2);
+  const resize = tf.image.resizeBilinear(decoded, [inputSize[1], inputSize[0]]);
   const norm = tf.div(resize, 255);
   const tensor = tf.expandDims(norm, 0);
-  const img = { fileName, tensor, inputShape: [buffer.shape[1], buffer.shape[0]], outputShape: tensor.shape, size: buffer.size, dtype: tensor.dtype };
-  tf.dispose([buffer, resize, norm]);
+  const img = { fileName, tensor, inputShape: [decoded.shape[1], decoded.shape[0]], outputShape: tensor.shape, size: decoded.size, dtype: tensor.dtype };
+  tf.dispose([decoded, resize, norm]);
   log.state({ input: img.fileName, size: img.size, resolution: img.inputShape, tensor: img.outputShape, type: img.dtype });
   return img;
 }
 
 // src/decode.ts
+var regionLandmarks = ["eyeRight", "eyeLeft", "nose", "mouthRight", "mouthLeft"];
 function exp(v) {
   if (Math.abs(v) < 1)
     return v * Math.E;
@@ -78,7 +79,7 @@ function exp(v) {
     return Math.exp(v);
   return -Math.exp(-v);
 }
-async function boxes(logits, minScore, regionLandmarks) {
+async function boxes(logits, minScore) {
   const bboxPtr = await logits[0].data();
   const scoresPtr = await logits[1].data();
   const landmarkPtr = await logits[2].data();
@@ -170,20 +171,18 @@ var modelOptions = {
   minScore: 0.2,
   iouThreshold: 0.1,
   maxResults: 1e3,
-  inputSize: [640, 480],
-  landmarks: ["rightEye", "leftEye", "nose", "rightMouth", "leftMouth"]
+  inputSize: [640, 480]
 };
-var model;
 async function main() {
   await tf2.ready();
   log2.headerJson();
   log2.info({ tensorflow: tf2.version["tfjs-node"] });
-  model = await tf2.loadGraphModel(modelOptions.modelPath);
+  const model = await tf2.loadGraphModel(modelOptions.modelPath);
   log2.data({ input: inImage, output: outImage });
   log2.data({ modelOptions });
   const img = await load(inImage, modelOptions.inputSize);
   const logits = await model.predict(img.tensor);
-  const regions = await boxes(logits, modelOptions.minScore, modelOptions.landmarks);
+  const regions = await boxes(logits, modelOptions.minScore);
   const nms2 = await nms(regions, modelOptions.iouThreshold, modelOptions.maxResults);
   log2.data({ results: nms2.length, scores: nms2.map((region) => Math.round(1e3 * region.score) / 10) });
   await save(img, outImage, nms2);
